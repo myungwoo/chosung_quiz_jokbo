@@ -4,13 +4,25 @@
   const clearBtn = document.getElementById('clearBtn');
   const resultsEl = document.getElementById('results');
 
-  const keyToEntries = new Map();
+  // Build grouped map: key -> { categories: Set<string>, answers: Set<string> }
+  const keyToGroup = new Map();
   const allKeys = [];
-  for (const entry of (window.CHOSEONG_DATA || [])) {
-    if (!keyToEntries.has(entry.key)) keyToEntries.set(entry.key, []);
-    keyToEntries.get(entry.key).push(entry);
+  const RAW = Array.isArray(window.CHOSEONG_DATA) ? window.CHOSEONG_DATA : [];
+  for (const entry of RAW) {
+    if (!entry || !entry.key) continue;
+    if (!keyToGroup.has(entry.key)) {
+      keyToGroup.set(entry.key, { categories: new Set(), answers: new Set() });
+    }
+    const group = keyToGroup.get(entry.key);
+    if (entry.category) group.categories.add(entry.category);
+    const answersArray = Array.isArray(entry.answers)
+      ? entry.answers
+      : (typeof entry.answer === 'string' && entry.answer ? [entry.answer] : []);
+    for (const ans of answersArray) {
+      if (typeof ans === 'string' && ans.trim()) group.answers.add(ans.trim());
+    }
   }
-  for (const k of keyToEntries.keys()) allKeys.push(k);
+  for (const k of keyToGroup.keys()) allKeys.push(k);
   allKeys.sort((a, b) => a.localeCompare(b));
 
   function renderEmpty(message) {
@@ -39,7 +51,7 @@
     return row;
   }
 
-  function renderExact(key, entries) {
+  function renderExact(key, group) {
     const card = document.createElement('div');
     card.className = 'card';
     const h3 = document.createElement('h3');
@@ -50,18 +62,21 @@
     keyEl.className = 'key';
     keyEl.textContent = key;
     row.appendChild(keyEl);
-    for (const e of entries) {
+    const shownCats = [];
+    for (const c of group.categories) {
+      if (c === '기타+중복정답') continue; // hide special bucket
+      shownCats.push(c);
+    }
+    for (const c of shownCats) {
       const chip = document.createElement('span');
       chip.className = 'chip';
-      chip.textContent = e.category;
+      chip.textContent = c;
       row.appendChild(chip);
     }
     const answers = document.createElement('div');
     answers.className = 'answers';
-    for (const e of entries) {
-      for (const ans of e.answers) {
-        answers.appendChild(createAnswerRow(ans));
-      }
+    for (const ans of group.answers) {
+      answers.appendChild(createAnswerRow(ans));
     }
     card.appendChild(h3);
     card.appendChild(row);
@@ -95,7 +110,11 @@
       const keyEl = document.createElement('span');
       keyEl.className = 'key';
       keyEl.textContent = k;
-      const cats = (keyToEntries.get(k) || []).map(e => e.category);
+      const group = keyToGroup.get(k);
+      const cats = [];
+      if (group) {
+        for (const c of group.categories) if (c !== '기타+중복정답') cats.push(c);
+      }
       const uniqCats = Array.from(new Set(cats));
       for (const c of uniqCats) {
         const chip = document.createElement('span');
@@ -130,7 +149,7 @@
       renderEmpty('초성을 입력하면 결과가 여기에 표시됩니다.');
       return;
     }
-    const exact = keyToEntries.get(q) || null;
+    const exact = keyToGroup.get(q) || null;
     const suggestions = renderSuggestions(q, exact ? q : null);
     resultsEl.innerHTML = '';
     if (exact) resultsEl.appendChild(renderExact(q, exact));

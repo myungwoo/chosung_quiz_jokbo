@@ -26,6 +26,9 @@ body {
 }
 .app-header h1 { margin: 8px 0 0; font-size: 22px; font-weight: 700; }
 .app-footer { color: var(--muted); }
+.app-footer a { color: var(--muted); text-decoration: underline; text-underline-offset: 2px; }
+.app-footer a:visited { color: var(--muted); }
+.app-footer a:hover { color: var(--text); }
 
 .app-main { max-width: 960px; margin: 0 auto; padding: 8px 16px 24px; }
 
